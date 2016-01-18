@@ -1,4 +1,4 @@
-import mim = require("mymodule");
+import mim = require("main");
 import jquery = require("jquery");
 import bootstrap = require("bootstrap");
 
