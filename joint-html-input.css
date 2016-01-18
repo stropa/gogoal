@@ -74,6 +74,8 @@
     border: none;
     left: 3px;
     right: 3px;
+    text-align-last: center;
+    color: white;
 }
 .html-element label {
     color: #333;

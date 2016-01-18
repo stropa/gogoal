@@ -41,6 +41,7 @@ function initCustoms() {
             this.$box = $(_.template(this.template)());
             this.$input = this.$box.find('textarea');
             this.$input.on('input', this.onTextInput);
+            this.$input.val(this.model.attributes.text);
 
             this.model.on('change', this.updateBox, this);
             this.model.on('remove', this.removeBox, this);
@@ -106,22 +107,12 @@ export class MainView extends bb.View<any> {
         this.graph = new Graph();
         this.paper = initPaper(this.graph);
 
-        var el1 = new joint.shapes.html.Element({
-            position: {x: 80, y: 80},
-            size: {width: 170, height: 100}
-        });
-        var el2 = new joint.shapes.html.Element({
-            position: {x: 370, y: 160},
-            size: {width: 170, height: 100}
-        });
-
-        var l = new joint.dia.Link({
-            source: {id: el1.id},
-            target: {id: el2.id},
-            attrs: {'.connection': {'stroke-width': 5, stroke: '#34495E'}}
-        });
-
-        this.graph.addCells([el1, el2, l]);
+        this.paper.on('cell:pointerdblclick',
+            function (cellView, evt, x, y) {
+                var input = cellView.$box.find(".element-input");
+                if (input) input.focus()
+            }
+        );
     }
 
 
@@ -166,7 +157,14 @@ function addToGraph(goal:GoalModel): Rect {
     });
     rect.position(100, 100);
     rect.resize(100, 30);
-    return rect;
+
+
+    var el1 = new joint.shapes.html.Element({
+        position: {x: 80, y: 80},
+        size: {width: 170, height: 100},
+        text: goal.name
+    });
+    return el1;
 }
 
  // ************* Init MainView **************
