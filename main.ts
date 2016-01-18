@@ -6,6 +6,88 @@ import Graph = joint.dia.Graph;
 import Rect = joint.shapes.basic.Rect;
 import input = require("jquery.svg");
 
+function initCustoms() {
+    // ********************************************************** Mix custom Elements for inline edit ***************************************
+// Create a custom element.
+// ------------------------
+
+    joint.shapes.html = {};
+    joint.shapes.html.Element = joint.shapes.basic.Rect.extend({
+        defaults: joint.util.deepSupplement({
+            type: 'html.Element',
+            attrs: {
+                rect: {stroke: 'none', 'fill-opacity': 0}
+            }
+        }, joint.shapes.basic.Rect.prototype.defaults)
+    });
+
+// Create a custom view for that element that displays an HTML div above it.
+// -------------------------------------------------------------------------
+
+    joint.shapes.html.ElementView = joint.dia.ElementView.extend({
+
+        template: [
+            '<div class="html-element">',
+            '<textarea class="element-input" />',
+            '</div>'
+        ].join(''),
+
+        initialize: function () {
+
+            _.bindAll(this, 'updateBox', 'onTextInput');
+
+            joint.dia.ElementView.prototype.initialize.apply(this, arguments);
+
+            this.$box = $(_.template(this.template)());
+            this.$input = this.$box.find('textarea');
+            this.$input.on('input', this.onTextInput);
+
+            this.model.on('change', this.updateBox, this);
+            this.model.on('remove', this.removeBox, this);
+
+            this.updateBox();
+        },
+
+        onTextInput: function (evt) {
+
+            var $input = $(evt.target);
+            //$input.attr('cols', Math.max($input.val().length, 10)); // ******************************************
+
+            this.model.resize($input.outerWidth() + 15, $input[0].scrollHeight + 15);
+            $input[0].style.height = 'auto';
+            $input[0].style.height = $input[0].scrollHeight + "px";
+            this.model.set('input', $input.val());
+        },
+
+        render: function () {
+            joint.dia.ElementView.prototype.render.apply(this, arguments);
+            this.paper.$el.prepend(this.$box);
+            this.$input.trigger('input');
+            return this;
+        },
+
+        updateBox: function () {
+            // Set the position and dimension of the box so that it covers the JointJS element.
+            var bbox = this.model.getBBox();
+            // Example of updating the HTML with a data stored in the cell model.
+            this.$box.css({
+                width: bbox.width,
+                height: bbox.height,
+                left: bbox.x,
+                top: bbox.y,
+                transform: 'rotate(' + (this.model.get('angle') || 0) + 'deg)'
+            });
+        },
+
+        removeBox: function (evt) {
+            this.$box.remove();
+        }
+    });
+
+
+
+}
+
 export class MainView extends bb.View<any> {
     paper: Paper;
     graph: Graph;
@@ -23,6 +105,23 @@ export class MainView extends bb.View<any> {
     initialize():void {
         this.graph = new Graph();
         this.paper = initPaper(this.graph);
+
+        var el1 = new joint.shapes.html.Element({
+            position: {x: 80, y: 80},
+            size: {width: 170, height: 100}
+        });
+        var el2 = new joint.shapes.html.Element({
+            position: {x: 370, y: 160},
+            size: {width: 170, height: 100}
+        });
+
+        var l = new joint.dia.Link({
+            source: {id: el1.id},
+            target: {id: el2.id},
+            attrs: {'.connection': {'stroke-width': 5, stroke: '#34495E'}}
+        });
+
+        this.graph.addCells([el1, el2, l]);
     }
 
 
@@ -33,10 +132,8 @@ export class MainView extends bb.View<any> {
          todo 3) save  Goal model to temp storage,
          todo 4) show detail view
          */
-        var goalModel:GoalModel = new GoalModel("New Goal asdkj askdjh asdkjhsa dkjhas dkjh asd \r\n" +
-            "k askjdhasdkjhs d", "");
+        var goalModel:GoalModel = new GoalModel("New Goal", "");
         this.graph.addCell(addToGraph(goalModel));
-
     }
 
 }
@@ -68,60 +165,13 @@ function addToGraph(goal:GoalModel): Rect {
         text: {text: goal.name, fill: 'green'}
     });
     rect.position(100, 100);
-    //rect.resize(100, 30);
+    rect.resize(100, 30);
     return rect;
 }
 
  // ************* Init MainView **************
+initCustoms();
 
 var goalsView = new MainView();
-
-
-var mousedownonelement = false;
-
-window.getlocalmousecoord = function (svg, evt) {
-    var pt = svg.createSVGPoint();
-    pt.x = evt.clientX;
-    pt.y = evt.clientY;
-    var localpoint = pt.matrixTransform(svg.getScreenCTM().inverse());
-    localpoint.x = Math.round(localpoint.x);
-    localpoint.y = Math.round(localpoint.y);
-    return localpoint;
-};
-
-window.createtext = function (localpoint, svg) {
-    var myforeign = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject')
-    var textdiv = document.createElement("div");
-    var textnode = document.createTextNode("Click to edit");
-    textdiv.appendChild(textnode);
-    textdiv.setAttribute("contentEditable", "true");
-    textdiv.setAttribute("width", "auto");
-    myforeign.setAttribute("width", "100%");
-    myforeign.setAttribute("height", "100%");
-    myforeign.classList.add("foreign"); //to make div fit text
-    textdiv.classList.add("insideforeign"); //to make div fit text
-    textdiv.addEventListener("mousedown", elementMousedown, false);
-    //myforeign.setAttributeNS(null, "transform", "translate(" + localpoint.x + " " + localpoint.y + ")");
-    //svg.appendChild(myforeign);
-    //document.getElementById("v-5").appendChild(myforeign);
-    //myforeign.setAttribute("transform", $("#v-8").attr("transform"));
-    $("#v-5").append(myforeign);
-    myforeign.appendChild(textdiv);
-
-};
-
-function elementMousedown(evt) {
-    mousedownonelement = true;
-}
-
-$(('#v-2')).click(function (evt) {
-    var svg = document.getElementById('v-2');
-    var localpoint = getlocalmousecoord(svg, evt);
-    if (!mousedownonelement) {
-        createtext(localpoint, svg);
-    } else {
-        mousedownonelement = false;
-    }
-});
 
 

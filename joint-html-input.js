@@ -22,7 +22,7 @@ function magic() {
 
         template: [
             '<div class="html-element">',
-            '<input class="element-input" type="text" value="I\'m HTML input" />',
+            '<textarea class="element-input" />',
             '</div>'
         ].join(''),
 
@@ -33,7 +33,7 @@ function magic() {
             joint.dia.ElementView.prototype.initialize.apply(this, arguments);
 
             this.$box = $(_.template(this.template)());
-            this.$input = this.$box.find('input');
+            this.$input = this.$box.find('textarea');
             this.$input.on('input', this.onTextInput);
 
             this.model.on('change', this.updateBox, this);
@@ -45,9 +45,11 @@ function magic() {
         onTextInput: function (evt) {
 
             var $input = $(evt.target);
-            $input.attr('size', Math.max($input.val().length, 10));
+            //$input.attr('cols', Math.max($input.val().length, 10)); // ******************************************
 
-            this.model.resize($input.outerWidth() + 10, $input.outerHeight() + 15);
+            this.model.resize($input.outerWidth() + 15, $input[0].scrollHeight + 15);
+            $input[0].style.height = 'auto';
+            $input[0].style.height = $input[0].scrollHeight + "px";
             this.model.set('input', $input.val());
         },
 
@@ -82,11 +84,11 @@ function magic() {
 
     var el1 = new joint.shapes.html.Element({
         position: {x: 80, y: 80},
-        size: {width: 170, height: 100},
+        size: {width: 170, height: 100}
     });
     var el2 = new joint.shapes.html.Element({
         position: {x: 370, y: 160},
-        size: {width: 170, height: 100},
+        size: {width: 170, height: 100}
     });
 
     var l = new joint.dia.Link({
