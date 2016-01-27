@@ -6,6 +6,10 @@ import Graph = joint.dia.Graph;
 import Rect = joint.shapes.basic.Rect;
 import input = require("jquery.svg");
 
+window.App = {
+    Models: {selectionModel: SelectionModel}
+};
+
 function initCustoms() {
     // ********************************************************** Mix custom Elements for inline edit ***************************************
 // Create a custom element.
@@ -29,24 +33,57 @@ function initCustoms() {
         template: [
             '<div class="html-element">',
             '<textarea class="element-input" />',
+            '<span class="glyphicon glyphicon-arrow-right element-actions actions-top-right"></span>',
             '</div>'
         ].join(''),
 
         initialize: function () {
 
-            _.bindAll(this, 'updateBox', 'onTextInput');
+            _.bindAll(this, 'updateBox', 'onTextInput', 'startConnection');
 
             joint.dia.ElementView.prototype.initialize.apply(this, arguments);
 
             this.$box = $(_.template(this.template)());
+
             this.$input = this.$box.find('textarea');
             this.$input.on('input', this.onTextInput);
             this.$input.val(this.model.attributes.text);
+
+            this.$connect = this.$box.find(".actions-top-right");
+            var myModel = this.model;
+
+            this.$connect.on('mousedown', this.startConnection);
 
             this.model.on('change', this.updateBox, this);
             this.model.on('remove', this.removeBox, this);
 
             this.updateBox();
+        },
+
+        startConnection: function (evt) {
+            var model = this.model;
+            var holderOffset = $("#graph-holder").offset();
+            var link = new joint.dia.Link({
+                source: {id: this.model.id},
+                target: {x: evt.pageX - holderOffset.left, y: evt.pageY - holderOffset.top}
+            });
+            this.model.graph.addCell(link);
+            $(document).mousemove(function (moveEvent) {
+                link.set('target', {x: moveEvent.pageX - holderOffset.left, y: moveEvent.pageY - holderOffset.top});
+            });
+            $(document).mouseup(function (moveEvent) {
+                if (link == null) return;
+                $(document).unbind('mousemove');
+                if (window.App.Models.selectionModel.pointed && window.App.Models.selectionModel.pointed != model) {
+                    var finalLink = new joint.dia.Link({
+                        source: {id: link.getSourceElement().id},
+                        target: {id: window.App.Models.selectionModel.pointed.id}
+                    });
+                    link.remove();
+                    model.graph.addCell(finalLink);
+                    link = null;
+                }
+            });
         },
 
         onTextInput: function (evt) {
@@ -86,22 +123,21 @@ function initCustoms() {
     });
 
 
-
 }
 
 export class MainView extends bb.View<any> {
-    paper: Paper;
-    graph: Graph;
+    paper:Paper;
+    graph:Graph;
+    selectionModel:SelectionModel;
 
-    constructor(options?) {
+    constructor(selectionModel:SelectionModel, options?:any) {
         this.el = "#MainView";
+        this.selectionModel = selectionModel;
         this.events = <any>{
             "click .gg-add-goal": "addGoal"
         };
-
         super(options);
-
-    }
+    };
 
     initialize():void {
         this.graph = new Graph();
@@ -113,13 +149,21 @@ export class MainView extends bb.View<any> {
                 if (input) input.focus()
             }
         );
+        var selection = this.selectionModel;
+        this.paper.on('cell:mouseover',
+            function (cellView, evt, x, y) {
+                if (cellView.model.attributes.type && cellView.model.attributes.type == 'html.Element') {
+                    selection.pointed = cellView.model;
+                }
+            }
+        );
     }
 
 
     addGoal():void {
         /* TODO: for new Goal we need to:
          todo 1) create model, - check
-         todo 2) add element (diagram_view ?) to diagram
+         todo 2) add element (diagram_view ?) to diagram - check
          todo 3) save  Goal model to temp storage,
          todo 4) show detail view
          */
@@ -127,6 +171,11 @@ export class MainView extends bb.View<any> {
         this.graph.addCell(addToGraph(goalModel));
     }
 
+}
+
+/** Contains elements which are currently selected or hovered by user. */
+export class SelectionModel extends bb.Model {
+    public pointed:bb.Model = null;
 }
 
 export class GoalModel extends bb.Model {
@@ -141,7 +190,7 @@ export class GoalModel extends bb.Model {
 }
 
 
-function initPaper(graph: Graph): Paper {
+function initPaper(graph:Graph):Paper {
     var paper = new Paper({
         model: graph,
         el: "#graph-holder"
@@ -149,27 +198,18 @@ function initPaper(graph: Graph): Paper {
     return paper;
 }
 
-function addToGraph(goal:GoalModel): Rect {
-    var rect = new Rect();
-    rect.attr({
-        rect: {fill: 'blue', width: 100, height: 30},
-        text: {text: goal.name, fill: 'green'}
-    });
-    rect.position(100, 100);
-    rect.resize(100, 30);
-
-
-    var el1 = new joint.shapes.html.Element({
+function addToGraph(goal:GoalModel):Rect {
+    return new joint.shapes.html.Element({
         position: {x: 80, y: 80},
         size: {width: 170, height: 100},
         text: goal.name
     });
-    return el1;
 }
 
- // ************* Init MainView **************
+// ************* Init MainView **************
 initCustoms();
 
-var goalsView = new MainView();
+var goalsView = new MainView(new SelectionModel());
+window.App.Models.selectionModel = goalsView.selectionModel;
 
 

@@ -82,10 +82,11 @@
     text-shadow: 1px 0 0 lightgray;
     font-weight: bold;
 }
-.html-element span {
+.html-element .actions-top-right {
     position: absolute;
-    top: 2px;
-    right: 9px;
-    color: white;
-    font-size: 10px;
+    top: -20px;
+}
+
+.html-element .element-actions {
+    pointer-events: auto;
 }
